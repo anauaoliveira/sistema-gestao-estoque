@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Gestão de Estoque | Full-Stack</title>
+        <style>
+            body {
+                font-family: "Segoe UI", Arial, sans-serif;
+                background: #f0f2f5;
+                margin: 0;
+                padding: 30px;
+                color: #333;
+            }
+            .container {
+                max-width: 850px;
+                margin: auto;
+                background: white;
+                padding: 25px;
+                border-radius: 10px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            }
+            h1 {
+                margin-top: 0;
+                color: #1a202c;
+                font-size: 22px;
+                border-bottom: 2px solid #edf2f7;
+                padding-bottom: 10px;
+            }
+            .form-grid {
+                display: grid;
+                grid-template-columns: 2fr 1fr 1fr 1fr auto;
+                gap: 10px;
+                margin-bottom: 25px;
+            }
+            input {
+                padding: 10px;
+                border: 1px solid #cbd5e0;
+                border-radius: 6px;
+                font-size: 14px;
+            }
+            button.btn-add {
+                background: #2b6cb0;
+                color: white;
+                border: none;
+                padding: 10px 18px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-weight: bold;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+            th,
+            td {
+                text-align: left;
+                padding: 12px;
+                border-bottom: 1px solid #e2e8f0;
+            }
+            th {
+                background: #f7fafc;
+                color: #4a5568;
+                font-size: 13px;
+                text-transform: uppercase;
+            }
+            .badge-ok {
+                background: #c6f6d5;
+                color: #22543d;
+                padding: 4px 8px;
+                border-radius: 12px;
+                font-size: 12px;
+                font-weight: bold;
+            }
+            .badge-alerta {
+                background: #fed7d7;
+                color: #822727;
+                padding: 4px 8px;
+                border-radius: 12px;
+                font-size: 12px;
+                font-weight: bold;
+            }
+            .btn-del {
+                background: #e53e3e;
+                color: white;
+                border: none;
+                padding: 5px 10px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 12px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Painel de Controle de Estoque (Python + SQL)</h1>
+            <div class="form-grid">
+                <input type="text" id="nome" placeholder="Nome do produto" />
+                <input type="number" id="preco" placeholder="Preço (R$)" step="0.01" />
+                <input type="number" id="quantidade" placeholder="Qtd Atual" />
+                <input type="number" id="estoque_minimo" placeholder="Qtd Mínima" />
+                <button class="btn-add" onclick="cadastrarProduto()">+ Adicionar</button>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Produto</th>
+                        <th>Preço</th>
+                        <th>Estoque</th>
+                        <th>Status</th>
+                        <th>Ação</th>
+                    </tr>
+                </thead>
+                <tbody id="tabela-produtos"></tbody>
+            </table>
+        </div>
+        <script>
+            async function carregarProdutos() {
+                const res = await fetch('/api/produtos');
+                const produtos = await res.json();
+                const tbody = document.getElementById('tabela-produtos');
+                tbody.innerHTML = '';
+                produtos.forEach(p => {
+                    const baixo = p.quantidade < p.estoque_minimo;
+                    const status = baixo 
+                        ? '<span class="badge-alerta">Repor Estoque</span>' 
+                        : '<span class="badge-ok">Normal</span>';
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><strong>${p.nome}</strong></td>
+                            <td>R$ ${p.preco.toFixed(2)}</td>
+                            <td>${p.quantidade} un. (mín: ${p.estoque_minimo})</td>
+                            <td>${status}</td>
+                            <td><button class="btn-del" onclick="removerProduto(${p.id})">Excluir</button></td>
+                        </tr>`;
+                });
+            }
+
+            async function cadastrarProduto() {
+                const dados = {
+                    nome: document.getElementById('nome').value,
+                    preco: document.getElementById('preco').value,
+                    quantidade: document.getElementById('quantidade').value || 0,
+                    estoque_minimo: document.getElementById('estoque_minimo').value || 0
+                };
+                const res = await fetch('/api/produtos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dados)
+                });
+                if (res.ok) {
+                    ['nome', 'preco', 'quantidade', 'estoque_minimo'].forEach(id => document.getElementById(id).value = '');
+                    carregarProdutos();
+                } else {
+                    alert('Preencha nome e preço válidos.');
+                }
+            }
+
+            async function removerProduto(id) {
+                await fetch(`/api/produtos/${id}`, { method: 'DELETE' });
+                carregarProdutos();
+            }
+
+            carregarProdutos();
+        </script>
+    </body>
+</html>
